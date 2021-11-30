@@ -2,7 +2,10 @@ package net.oprealms.skills.listener;
 
 import me.lucko.helper.Events;
 import net.oprealms.skills.SkillApi;
+import net.oprealms.skills.cache.SkillCacheResult;
 import net.oprealms.skills.type.SkillType;
+import org.apache.commons.lang.WordUtils;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -22,7 +25,9 @@ public class SkillListener {
             if (exp <= 0) return;
             var killer = event.getEntity().getKiller();
             assert killer != null;
-            SkillApi.incrementExp(SkillType.COMBAT, killer.getUniqueId(), exp);
+            if (SkillApi.incrementExp(SkillType.COMBAT, killer.getUniqueId(), exp) == SkillCacheResult.LEVEL_UP) {
+                killer.sendMessage(ChatColor.GREEN + "You have increased your level for skill " + WordUtils.capitalizeFully(SkillType.COMBAT.name().toLowerCase()));
+            }
         });
     }
 }

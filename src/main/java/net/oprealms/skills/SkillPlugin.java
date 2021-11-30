@@ -4,6 +4,8 @@ import me.lucko.helper.plugin.ap.Plugin;
 import me.lucko.helper.sql.DatabaseCredentials;
 import me.lucko.helper.sql.Sql;
 import me.lucko.helper.sql.plugin.HelperSql;
+import net.oprealms.skills.command.SkillCommand;
+import net.oprealms.skills.listener.SkillListener;
 import net.oprealms.skills.type.SkillType;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,10 +26,14 @@ public class SkillPlugin extends JavaPlugin {
         saveDefaultConfig();
         sql = new HelperSql(DatabaseCredentials.fromConfig(Objects.requireNonNull(getConfig().getConfigurationSection("sql"))));
 
-
         for (var type : SkillType.values()) {
             sql.executeAsync(String.format("CREATE TABLE IF NOT EXISTS %s(uuid_least BIGINT NOT NULL, uuid_most BIGINT NOT NULL, level INT NOT NULL, exp DOUBLE NOT NULL, PRIMARY KEY(uuid_least, uuid_most));", type.name().toLowerCase()));
         }
+
+        SkillApi.cacheSkills();
+
+        new SkillCommand();
+        new SkillListener();
     }
 
     public Sql getSql() {

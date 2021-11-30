@@ -25,7 +25,7 @@ public class SkillCache {
                 UUID uuid = new UUID(resultSet.getLong(2), resultSet.getLong(1));
                 int level = resultSet.getInt(3);
                 double exp = resultSet.getInt(4);
-                SkillDataCache skillDataCache = new SkillDataCache(uuid);
+                SkillDataCache skillDataCache = new SkillDataCache();
                 skillDataCache.setLevel(level);
                 skillDataCache.setExp(exp);
                 dataCache.put(uuid, skillDataCache);
@@ -35,22 +35,31 @@ public class SkillCache {
         });
     }
 
-    public void incrementExp(UUID uuid, double exp) {
-        setExp(uuid, getExp(uuid) + exp);
+    public SkillCacheResult incrementExp(UUID uuid, double exp) {
+        return setExp(uuid, getExp(uuid) + exp);
     }
 
     public void decrementExp(UUID uuid, double exp) {
         setExp(uuid, Math.max(0, getExp(uuid) - exp));
     }
 
-    public void setExp(UUID uuid, double exp) {
-        var data = dataCache.getOrDefault(uuid, new SkillDataCache(uuid));
+    public SkillCacheResult setExp(UUID uuid, double exp) {
+        var data = dataCache.getOrDefault(uuid, new SkillDataCache());
         data.setExp(exp);
+
+        var neededExp = progression.getRequired(getLevel(uuid));
+        boolean succeeded = false;
+        if (data.getExp() >= neededExp) {
+            incrementLevel(uuid, 1);
+            data.setExp(0);
+            succeeded = true;
+        }
         saveData(uuid);
+        return succeeded ? SkillCacheResult.LEVEL_UP : SkillCacheResult.UNKNOWN;
     }
 
     public double getExp(UUID uuid) {
-        return dataCache.getOrDefault(uuid, new SkillDataCache(uuid)).getExp();
+        return dataCache.getOrDefault(uuid, new SkillDataCache()).getExp();
     }
 
     public void incrementLevel(UUID uuid, int level) {
@@ -62,40 +71,28 @@ public class SkillCache {
     }
 
     public void setLevel(UUID uuid, int level) {
-        var data = dataCache.getOrDefault(uuid, new SkillDataCache(uuid));
+        var data = dataCache.getOrDefault(uuid, new SkillDataCache());
         data.setLevel(Math.min(level, 50));
         saveData(uuid);
     }
 
     public int getLevel(UUID uuid) {
-        return dataCache.getOrDefault(uuid, new SkillDataCache(uuid)).getLevel();
+        return dataCache.getOrDefault(uuid, new SkillDataCache()).getLevel();
     }
 
     public void saveData(UUID uuid) {
-        SkillPlugin.get().getSql().queryAsync("SELECT * FROM " + type.name().toLowerCase() +" WHERE uuid_least = ? AND uuid_most = ?;", statement -> {
+        SkillPlugin.get().getSql().executeAsync("INSERT INTO " + type.name().toLowerCase() + "(uuid_least, uuid_most, level, exp) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE level=VALUES(level), exp=VALUES(exp);", statement -> {
             statement.setLong(1, uuid.getLeastSignificantBits());
             statement.setLong(2, uuid.getMostSignificantBits());
-        }, resultSet -> {
-            if (!resultSet.next()) {
-                SkillPlugin.get().getSql().executeAsync("INSERT INTO " + type.name().toLowerCase() + "(uuid_least, uuid_most, level, exp) VALUES (?, ?, ?, ?);", statement -> {
-                    statement.setLong(1, uuid.getLeastSignificantBits());
-                    statement.setLong(2, uuid.getMostSignificantBits());
-                    statement.setInt(3, getLevel(uuid));
-                    statement.setDouble(4, getExp(uuid));
-                });
-            } else {
-                SkillPlugin.get().getSql().executeAsync("UPDATE " + type.name().toLowerCase() + " SET level = ?, SET exp = ? WHERE uuid_least = ? AND uuid_most = ?;", statement -> {
-                    statement.setInt(1, getLevel(uuid));
-                    statement.setDouble(2, getExp(uuid));
-                    statement.setLong(3, uuid.getLeastSignificantBits());
-                    statement.setLong(4, uuid.getMostSignificantBits());
-                });
-            }
-            return null;
+            statement.setInt(3, getLevel(uuid));
+            statement.setDouble(4, getExp(uuid));
         });
     }
 
     public Progression getProgression() {
         return progression;
     }
+
+
 }
+

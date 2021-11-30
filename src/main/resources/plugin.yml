@@ -1,0 +1,5 @@
+main: net.oprealms.skills.SkillPlugin
+name: Skills
+version: 1.0
+depend: [helper, helper-sql]
+api-version: 1.13

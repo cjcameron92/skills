@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id "com.github.johnrengelman.shadow" version "7.1.0"
+
 }
 
 group 'net.oprealms.skills'
@@ -19,6 +21,22 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.17.1-R0.1-SNAPSHOT")
 }
 
-test {
-    useJUnitPlatform()
+shadowJar {
+    archivesBaseName = "Skills"
+    archiveFileName.set("Skills.jar")
+
+    destinationDir = file('build/libs/')
+    classifier = null
+    minimize()
+    dependencies {
+        manifest {
+            attributes("Main-Class": "net.oprealms.skills.SkillPlugin")
+        }
+    }
 }
+
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(16))
+}
+
